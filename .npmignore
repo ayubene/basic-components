@@ -1,0 +1,24 @@
+# Demo / playground files
+index.html
+src/App.vue
+src/main.ts
+src/mock/
+
+# Docs and examples that shouldn't ship with the npm package
+EXAMPLES.md
+INSTALL.md
+
+# Local config / tooling files
+vite.config.ts
+tsconfig.json
+.eslintrc.cjs
+.eslintignore
+.prettierrc
+.prettierignore
+.gitignore
+
+# Misc
+*.log
+node_modules/
+
+
