@@ -51,6 +51,10 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   'update:modelValue': [value: any]
   change: [value: any]
+  /**
+   * 数据加载完成时触发，方便父组件拿到原始数据/选项用于其它用途
+   */
+  'data-loaded': [payload: { raw: any; options: OptionRecord[]; fromRemote: boolean }]
 }>()
 
 type OptionRecord = {
@@ -99,7 +103,8 @@ const loadData = async (keyword?: string) => {
 
     // 如果是数组，直接使用；如果是对象，尝试获取列表字段
     if (!Array.isArray(data)) {
-      data = data.list || data.data || data.items || []
+      // 兼容常见字段：rows / list / data / items / records
+      data = data.rows || data.list || data.data || data.items || data.records || []
     }
 
     // 数据转换
@@ -113,6 +118,8 @@ const loadData = async (keyword?: string) => {
         disabled: item[fieldMap.disabled] || false
       }))
     }
+
+    emit('data-loaded', { raw: data, options: options.value, fromRemote: !!keyword })
   } catch (error) {
     console.error('Load select data error:', error)
     options.value = []

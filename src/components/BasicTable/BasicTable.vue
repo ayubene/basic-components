@@ -29,7 +29,9 @@
               v-else-if="column.searchType === 'select'"
               v-model="searchForm[column.field]"
               :placeholder="column.searchPlaceholder || `请选择${column.title}`"
-              :options="column.searchOptions"
+              :options="searchSelectOptionsMap[column.field] || column.searchOptions"
+              v-bind="column.searchSelectProps"
+              @data-loaded="(payload) => handleSearchSelectLoaded(column.field, column.searchSelectProps, payload)"
               style="width: 100%"
             />
             <!-- 日期选择 -->
@@ -446,6 +448,7 @@ const searchFormRef = ref()
 const tableData = ref<any[]>([])
 const selectedRows = ref<any[]>([])
 const loading = ref(false)
+const searchSelectOptionsMap = ref<Record<string, any[]>>({})
 
 // 搜索表单
 const searchForm = ref<Record<string, any>>({})
@@ -654,6 +657,23 @@ const loadData = async () => {
     pagination.value.total = 0
   } finally {
     loading.value = false
+  }
+}
+
+// 搜索下拉数据加载回调（BasicSelect 的 data-loaded）
+const handleSearchSelectLoaded = (
+  field: string,
+  selectProps: any,
+  payload: { options: any[]; raw: any; fromRemote: boolean }
+) => {
+  if (payload?.options) {
+    searchSelectOptionsMap.value = {
+      ...searchSelectOptionsMap.value,
+      [field]: payload.options
+    }
+  }
+  if (selectProps?.onDataLoaded) {
+    selectProps.onDataLoaded(payload)
   }
 }
 

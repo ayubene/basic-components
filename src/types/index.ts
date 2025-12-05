@@ -21,6 +21,11 @@ export interface TableColumn {
   searchable?: boolean // 是否可搜索
   searchType?: 'input' | 'select' | 'date' | 'daterange' | 'number' // 搜索类型
   searchOptions?: Array<{ label: string; value: any }> // 搜索选项（当searchType为select时）
+  // 当 searchType 为 select 时，透传给 BasicSelect 的配置（listUrl、value-key、label-key 等）
+  searchSelectProps?: SelectProps & {
+    // BasicSelect 数据加载完成的回调（可选）
+    onDataLoaded?: (payload: { raw: any; options: Array<{ label: string; value: any }>; fromRemote: boolean }) => void
+  }
   searchPlaceholder?: string // 搜索占位符
   // 自定义渲染
   slots?: {
