@@ -20,18 +20,12 @@ class Request {
         }, (error) => {
             return Promise.reject(error);
         });
-        // 响应拦截器
+        // 响应拦截器：透传原始响应，交由上层处理（避免 code 限制）
         this.instance.interceptors.response.use((response) => {
-            const { data } = response;
-            // 根据实际后端返回格式调整
-            if (data && (data.code === 200 || data.code === 0)) {
-                return data;
+            if (response.data instanceof Blob) {
+                return response.data;
             }
-            // 如果是Blob类型（下载），直接返回
-            if (data instanceof Blob) {
-                return data;
-            }
-            return Promise.reject(new Error(data?.message || '请求失败'));
+            return response;
         }, (error) => {
             return Promise.reject(error);
         });

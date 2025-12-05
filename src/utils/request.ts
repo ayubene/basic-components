@@ -35,23 +35,15 @@ class Request {
       }
     )
 
-    // 响应拦截器
+    // 响应拦截器：透传原始响应，交给上层处理（避免 code 限制导致合法响应被拦截）
     this.instance.interceptors.response.use(
       (response: AxiosResponse<ApiResponse>) => {
-        const { data } = response
-        // 根据实际后端返回格式调整
-        if (data && (data.code === 200 || data.code === 0)) {
-          return data
+        if (response.data instanceof Blob) {
+          return response.data as any
         }
-        // 如果是Blob类型（下载），直接返回
-        if (data instanceof Blob) {
-          return data as any
-        }
-        return Promise.reject(new Error((data as any)?.message || '请求失败'))
+        return response
       },
-      (error: any) => {
-        return Promise.reject(error)
-      }
+      (error: any) => Promise.reject(error)
     )
   }
 

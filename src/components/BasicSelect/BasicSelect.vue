@@ -99,24 +99,69 @@ const loadData = async (keyword?: string) => {
     }
 
     const response = await request.get(props.listUrl, params)
-    let data = response.data
+    let responseData = response.data
 
-    // 如果是数组，直接使用；如果是对象，尝试获取列表字段
-    if (!Array.isArray(data)) {
-      // 兼容常见字段：rows / list / data / items / records
-      data = data.rows || data.list || data.data || data.items || data.records || []
+    console.log('[BasicSelect] 原始响应数据:', responseData)
+
+    // 处理响应数据结构：后端可能返回 { total, rows, code, msg } 或者 { code, data, msg }
+    let data: any = responseData
+    
+    // 如果 responseData 有 code 和 data 字段，说明是标准响应结构 { code, data, msg }
+    if (responseData && typeof responseData === 'object' && 'code' in responseData && 'data' in responseData) {
+      data = responseData.data
+      console.log('[BasicSelect] 从标准响应结构中提取 data:', data)
     }
+
+    // 如果还不是数组，尝试从常见字段中提取（如 rows, list 等）
+    if (!Array.isArray(data) && data && typeof data === 'object') {
+      data = data.rows || data.list || data.items || data.records || []
+      console.log('[BasicSelect] 从对象中提取数组数据:', data)
+    }
+
+    // 确保 data 是数组
+    if (!Array.isArray(data)) {
+      console.error('[BasicSelect] 无法从响应中提取数组数据，响应结构:', responseData)
+      console.error('[BasicSelect] 提取后的 data:', data)
+      data = []
+    }
+
+    console.log('[BasicSelect] 最终使用的数据数组，长度:', data.length, '前3项:', data.slice(0, 3))
 
     // 数据转换
     if (props.transform) {
       options.value = props.transform(data)
     } else {
       const fieldMap = getFieldMap()
-      options.value = data.map((item: any) => ({
-        label: item[fieldMap.label],
-        value: item[fieldMap.value],
-        disabled: item[fieldMap.disabled] || false
-      }))
+      console.log('[BasicSelect] 字段映射配置:', fieldMap)
+      
+      options.value = data.map((item: any, index: number) => {
+        const labelValue = item[fieldMap.label]
+        const valueValue = item[fieldMap.value]
+        
+        // 如果字段为空，给出详细警告
+        if (labelValue === undefined || labelValue === null) {
+          console.warn(
+            `[BasicSelect] 第 ${index + 1} 项数据: 字段 "${fieldMap.label}" 不存在或为空`,
+            `可用字段: [${Object.keys(item).join(', ')}]`,
+            '数据项:', item
+          )
+        }
+        if (valueValue === undefined || valueValue === null) {
+          console.warn(
+            `[BasicSelect] 第 ${index + 1} 项数据: 字段 "${fieldMap.value}" 不存在或为空`,
+            `可用字段: [${Object.keys(item).join(', ')}]`,
+            '数据项:', item
+          )
+        }
+        
+        return {
+          label: labelValue ?? '',
+          value: valueValue,
+          disabled: item[fieldMap.disabled] || false
+        }
+      })
+      
+      console.log('[BasicSelect] 转换后的选项:', options.value.slice(0, 3))
     }
 
     emit('data-loaded', { raw: data, options: options.value, fromRemote: !!keyword })
