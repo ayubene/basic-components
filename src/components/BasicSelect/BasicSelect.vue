@@ -14,9 +14,9 @@
   >
     <el-option
       v-for="item in options"
-      :key="item[valueKey]"
-      :label="item[labelKey]"
-      :value="item[valueKey]"
+      :key="item.value"
+      :label="item.label"
+      :value="item.value"
       :disabled="item.disabled"
     />
   </el-select>
@@ -107,7 +107,7 @@ const loadData = async (keyword?: string) => {
     let data: any = responseData
     
     // 如果 responseData 有 code 和 data 字段，说明是标准响应结构 { code, data, msg }
-    if (responseData && typeof responseData === 'object' && 'code' in responseData && 'data' in responseData) {
+    if (responseData && typeof responseData === 'object' && 'data' in responseData) {
       data = responseData.data
       console.log('[BasicSelect] 从标准响应结构中提取 data:', data)
     }
@@ -130,6 +130,7 @@ const loadData = async (keyword?: string) => {
     // 数据转换
     if (props.transform) {
       options.value = props.transform(data)
+      console.log('[BasicSelect] 转换后的选项:', options.value.slice(0, 3))
     } else {
       const fieldMap = getFieldMap()
       console.log('[BasicSelect] 字段映射配置:', fieldMap)
@@ -171,6 +172,8 @@ const loadData = async (keyword?: string) => {
   } finally {
     loading.value = false
   }
+
+  console.log('[BasicSelect] 最终选项:', options.value.slice(0, 3))
 }
 
 // 远程搜索
