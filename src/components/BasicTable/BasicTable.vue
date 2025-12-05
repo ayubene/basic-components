@@ -29,7 +29,7 @@
               v-else-if="column.searchType === 'select'"
               v-model="searchForm[column.field]"
               :placeholder="column.searchPlaceholder || `请选择${column.title}`"
-              :options="searchSelectOptionsMap[column.field] || column.searchOptions"
+              :options="column.searchSelectProps?.listUrl ? undefined : (searchSelectOptionsMap[column.field] || column.searchOptions)"
               v-bind="column.searchSelectProps"
               @data-loaded="(payload) => handleSearchSelectLoaded(column.field, column.searchSelectProps, payload)"
               style="width: 100%"
