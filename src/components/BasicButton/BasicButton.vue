@@ -1,6 +1,6 @@
 <template>
-  <el-button
-    v-bind="$attrs"
+<el-button
+  v-bind="filteredAttrs"
     :type="type"
     :size="size"
     :loading="computedLoading"
@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, useAttrs } from 'vue'
 import type { ButtonProps } from '@/types'
 
 defineOptions({
@@ -44,6 +44,12 @@ const emit = defineEmits<{
 }>()
 
 const internalLoading = ref(false)
+const attrs = useAttrs()
+const filteredAttrs = computed(() => {
+  // 移除潜在的 onClick / onclick，避免与组件内部点击处理重复触发
+  const { onClick, onclick, ...rest } = attrs
+  return rest
+})
 
 const computedLoading = computed(() => {
   return props.loading || internalLoading.value

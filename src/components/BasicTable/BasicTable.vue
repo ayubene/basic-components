@@ -94,7 +94,7 @@
         :disabled="selectedRows.length === 0"
         @click="handleBatchDelete"
       >
-        批量删除222
+        批量删除
       </BasicButton>
       <BasicButton v-if="showExport" type="success" :on-click="handleExport">导出</BasicButton>
       <BasicButton
@@ -426,7 +426,7 @@ const props = withDefaults(defineProps<Props>(), {
   showToolbar: true,
   showExport: true,
   showCreate: true,
-  showDelete: true,
+  showDelete: false,
   searchFormCols: 3,
   enableColumnCustomize: false,
   columnCustomizeKey: 'default',
@@ -465,6 +465,10 @@ const editingColumn = ref<TableColumn>({
   sortable: false
 })
 const customizedColumns = ref<TableColumn[]>([])
+const deletingColumn = ref(false)
+const savingColumn = ref(false)
+const batchDeleting = ref(false)
+let lastSaveColumnAt = 0
 
 // 获取存储key
 const getStorageKey = () => {
@@ -768,17 +772,20 @@ const handleDelete = async (row: any) => {
 
 // 批量删除
 const handleBatchDelete = async () => {
-  if (selectedRows.value.length === 0) {
-    ElMessage.warning('请选择要删除的记录')
-    return
-  }
-
-  if (!props.deleteUrl) {
-    ElMessage.warning('未配置删除URL')
-    return
-  }
+  if (batchDeleting.value) return
+  batchDeleting.value = true
 
   try {
+    if (selectedRows.value.length === 0) {
+      ElMessage.warning('请选择要删除的记录')
+      return
+    }
+
+    if (!props.deleteUrl) {
+      ElMessage.warning('未配置删除URL')
+      return
+    }
+
     await ElMessageBox.confirm(`确定要删除选中的 ${selectedRows.value.length} 条记录吗？`, '提示', {
       type: 'warning'
     })
@@ -793,6 +800,8 @@ const handleBatchDelete = async () => {
       console.error('Batch delete error:', error)
       ElMessage.error('删除失败')
     }
+  } finally {
+    batchDeleting.value = false
   }
 }
 
@@ -908,15 +917,21 @@ const handleEditColumn = (column: TableColumn, index: number) => {
   showColumnEditDialog.value = true
 }
 
-const handleDeleteColumn = (index: number) => {
-  ElMessageBox.confirm('确定要删除这一列吗？', '提示', {
-    type: 'warning'
-  })
-    .then(() => {
-      customizedColumns.value.splice(index, 1)
-      ElMessage.success('删除成功')
+const handleDeleteColumn = async (index: number) => {
+  if (deletingColumn.value) return
+
+  try {
+    deletingColumn.value = true
+    await ElMessageBox.confirm('确定要删除这一列吗？', '提示', {
+      type: 'warning'
     })
-    .catch(() => {})
+    customizedColumns.value.splice(index, 1)
+    ElMessage.success('删除成功')
+  } catch (error) {
+    // ignore cancel
+  } finally {
+    deletingColumn.value = false
+  }
 }
 
 const handleAddSearchOption = () => {
@@ -1020,37 +1035,47 @@ const handleToggleEditable = (index: number, val: boolean) => {
   }
 }
 
-const handleSaveColumn = () => {
-  if (!editingColumn.value.field || !editingColumn.value.title) {
-    ElMessage.warning('请填写列名和字段名')
-    return
-  }
+const handleSaveColumn = async () => {
+  // 防抖：极短时间内的重复点击直接忽略
+  const now = Date.now()
+  if (savingColumn.value || now - lastSaveColumnAt < 500) return
+  lastSaveColumnAt = now
 
-  // 如果开启了筛选但没有筛选选项，给出提示
-  if (editingColumn.value.filterable && (!editingColumn.value.filters || editingColumn.value.filters.length === 0)) {
-    ElMessage.warning('已开启筛选功能，但未添加筛选选项。筛选功能需要至少一个筛选选项才能生效。')
-    return
-  }
+  savingColumn.value = true
+  try {
+    if (!editingColumn.value.field || !editingColumn.value.title) {
+      ElMessage.warning('请填写列名和字段名')
+      return
+    }
 
-  // 验证字段名唯一性
-  const exists = customizedColumns.value.find(
-    (col, index) => col.field === editingColumn.value.field && index !== editingColumnIndex.value
-  )
-  if (exists) {
-    ElMessage.warning('字段名已存在')
-    return
-  }
+    // 如果开启了筛选但没有筛选选项，给出提示
+    if (editingColumn.value.filterable && (!editingColumn.value.filters || editingColumn.value.filters.length === 0)) {
+      ElMessage.warning('已开启筛选功能，但未添加筛选选项。筛选功能需要至少一个筛选选项才能生效。')
+      return
+    }
 
-  if (editingColumnIndex.value === -1) {
-    // 新增
-    customizedColumns.value.push({ ...editingColumn.value })
-  } else {
-    // 编辑
-    customizedColumns.value[editingColumnIndex.value] = { ...editingColumn.value }
-  }
+    // 验证字段名唯一性
+    const existsIndex = customizedColumns.value.findIndex(
+      (col, index) => col.field === editingColumn.value.field && index !== editingColumnIndex.value
+    )
+    if (existsIndex !== -1) {
+      ElMessage.warning('字段名已存在')
+      return
+    }
 
-  showColumnEditDialog.value = false
-  ElMessage.success(editingColumnIndex.value === -1 ? '新增成功' : '保存成功')
+    if (editingColumnIndex.value === -1) {
+      // 新增
+      customizedColumns.value.push({ ...editingColumn.value })
+    } else {
+      // 编辑
+      customizedColumns.value[editingColumnIndex.value] = { ...editingColumn.value }
+    }
+
+    showColumnEditDialog.value = false
+    ElMessage.success(editingColumnIndex.value === -1 ? '新增成功' : '保存成功')
+  } finally {
+    savingColumn.value = false
+  }
 }
 
 const handleSaveColumns = () => {
@@ -1059,16 +1084,24 @@ const handleSaveColumns = () => {
   ElMessage.success('列配置已保存')
 }
 
-const handleResetColumns = () => {
-  ElMessageBox.confirm('确定要重置为默认列配置吗？', '提示', {
-    type: 'warning'
-  })
-    .then(() => {
-      customizedColumns.value = props.columns.map((col) => ({ ...col, visible: true }))
-      localStorage.removeItem(getStorageKey())
-      ElMessage.success('已重置为默认配置')
+const resettingColumns = ref(false)
+
+const handleResetColumns = async () => {
+  if (resettingColumns.value) return
+
+  try {
+    resettingColumns.value = true
+    await ElMessageBox.confirm('确定要重置为默认列配置吗？', '提示', {
+      type: 'warning'
     })
-    .catch(() => {})
+    customizedColumns.value = props.columns.map((col) => ({ ...col, visible: true }))
+    localStorage.removeItem(getStorageKey())
+    ElMessage.success('已重置为默认配置')
+  } catch (error) {
+    // ignore cancel
+  } finally {
+    resettingColumns.value = false
+  }
 }
 
 const handleColumnDialogClose = () => {
