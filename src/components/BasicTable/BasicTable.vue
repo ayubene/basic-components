@@ -66,8 +66,8 @@
         </el-col>
         <el-col :span="24 / searchFormCols">
           <el-form-item>
-            <BasicButton type="primary" @click="handleSearch">查询</BasicButton>
-            <BasicButton @click="handleReset">重置</BasicButton>
+            <el-button type="primary" @click="handleSearch">查询</el-button>
+            <el-button @click="handleReset">重置</el-button>
             <el-button
               v-if="hasMoreSearchColumns"
               link
@@ -87,23 +87,23 @@
 
     <!-- 工具栏 -->
     <div v-if="showToolbar" class="toolbar">
-      <BasicButton v-if="showCreate" type="primary" @click="handleCreate">新增</BasicButton>
-      <BasicButton
+      <el-button v-if="showCreate" type="primary" @click="handleCreate">新增</el-button>
+      <el-button
         v-if="showDelete"
         type="danger"
         :disabled="selectedRows.length === 0"
         @click="handleBatchDelete"
       >
         批量删除
-      </BasicButton>
-      <BasicButton v-if="showExport" type="success" :on-click="handleExport">导出</BasicButton>
-      <BasicButton
+      </el-button>
+      <el-button v-if="showExport" type="success" @click="handleExport">导出</el-button>
+      <el-button
         v-if="enableColumnCustomize"
         type="info"
         @click="showColumnCustomizeDialog = true"
       >
         列设置
-      </BasicButton>
+      </el-button>
       <slot name="toolbar"></slot>
     </div>
 
@@ -155,7 +155,7 @@
       </vxe-column>
       <vxe-column v-if="showDelete || showCreate" title="操作" width="150" align="center">
         <template #default="{ row }">
-          <BasicButton
+          <el-button
             v-if="showCreate"
             type="primary"
             link
@@ -163,8 +163,8 @@
             @click="handleEdit(row)"
           >
             编辑
-          </BasicButton>
-          <BasicButton
+          </el-button>
+          <el-button
             v-if="showDelete"
             type="danger"
             link
@@ -172,7 +172,7 @@
             @click="handleDelete(row)"
           >
             删除
-          </BasicButton>
+          </el-button>
           <slot name="action" :row="row"></slot>
         </template>
       </vxe-column>
@@ -188,11 +188,11 @@
     >
       <div class="column-customize">
         <div class="column-customize-header">
-          <BasicButton type="primary" size="small" @click="handleAddColumn">
+          <el-button type="primary" size="small" @click="handleAddColumn">
             <el-icon><Plus /></el-icon>
             新增列
-          </BasicButton>
-          <BasicButton size="small" @click="handleResetColumns">重置为默认</BasicButton>
+          </el-button>
+          <el-button size="small" @click="handleResetColumns">重置为默认</el-button>
         </div>
 
         <el-table :data="customizedColumns" border style="width: 100%">
@@ -233,25 +233,25 @@
           </el-table-column>
           <el-table-column label="操作" width="150" fixed="right">
             <template #default="{ row, $index }">
-              <BasicButton type="primary" link size="small" @click="handleEditColumn(row, $index)">
+              <el-button type="primary" link size="small" @click="handleEditColumn(row, $index)">
                 编辑
-              </BasicButton>
-              <BasicButton
+              </el-button>
+              <el-button
                 type="danger"
                 link
                 size="small"
                 @click="handleDeleteColumn($index)"
               >
                 删除
-              </BasicButton>
+              </el-button>
             </template>
           </el-table-column>
         </el-table>
       </div>
 
       <template #footer>
-        <BasicButton @click="showColumnCustomizeDialog = false">取消</BasicButton>
-        <BasicButton type="primary" @click="handleSaveColumns">保存</BasicButton>
+        <el-button @click="showColumnCustomizeDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveColumns">保存</el-button>
       </template>
     </BasicModal>
 
@@ -377,8 +377,8 @@
       </el-form>
 
       <template #footer>
-        <BasicButton @click="showColumnEditDialog = false">取消</BasicButton>
-        <BasicButton type="primary" @click="handleSaveColumn">确定</BasicButton>
+        <el-button @click="showColumnEditDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveColumn">确定</el-button>
       </template>
     </BasicModal>
 
@@ -404,7 +404,6 @@ import { Plus, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 // 使用相对路径，避免依赖外部项目的 @ 别名配置
 import { request } from '../../utils/request'
 import type { TableProps, TableColumn, TableInstance } from '../../types'
-import BasicButton from '../BasicButton/BasicButton.vue'
 import BasicModal from '../BasicModal/BasicModal.vue'
 import BasicSelect from '../BasicSelect/BasicSelect.vue'
 
@@ -462,7 +461,9 @@ const editingColumn = ref<TableColumn>({
   title: '',
   visible: true,
   searchable: false,
-  sortable: false
+  sortable: false,
+  filterable: false,
+  editRender: undefined
 })
 const customizedColumns = ref<TableColumn[]>([])
 const deletingColumn = ref(false)
@@ -683,6 +684,8 @@ const handleSearchSelectLoaded = (
 
 // 搜索
 const handleSearch = () => {
+  console.log('handleSearch');
+  
   pagination.value.page = 1
   loadData()
 }
@@ -816,6 +819,9 @@ const handleExport = async () => {
     const params = {
       ...searchForm.value
     }
+
+    console.log('111111111111',params);
+    
 
     // 处理日期范围
     const allColumns = props.enableColumnCustomize
@@ -1135,7 +1141,6 @@ watch(
 <style scoped lang="scss">
 .basic-table {
   .search-form {
-    margin-bottom: 16px;
     padding: 16px;
     background: #fff;
     border-radius: 4px;
