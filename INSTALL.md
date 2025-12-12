@@ -26,7 +26,7 @@ npm run build:lib
 ## 发布到 npm
 
 1. 更新 `package.json` 中的版本号
-2. 登录 npm：`npm login`
+2. 登录 npm：`npm login` (登录npm Public registration is not allowed,表明当前的npm registry（镜像源）设置不允许公开注册。切换回官方npm源npm config set registry https://registry.npmjs.org/)
 3. 发布：`npm publish`
 
 ## 在其他项目中使用

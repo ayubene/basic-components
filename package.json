@@ -1,6 +1,6 @@
 {
   "name": "srit-basic-components",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A Vue 3 component library based on Element Plus and vxe-table",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
