@@ -15,8 +15,14 @@
     <div class="modal-content">
       <slot></slot>
     </div>
-    <template #footer v-if="$slots.footer">
-      <slot name="footer"></slot>
+    <template #footer>
+      <div v-if="$slots.footer">
+        <slot name="footer"></slot>
+      </div>
+      <div v-else class="default-footer">
+        <el-button @click="handleCancel" :disabled="cancelButtonLoading">{{ cancelButtonText }}</el-button>
+        <el-button type="primary" @click="handleConfirm" :loading="confirmButtonLoading">{{ confirmButtonText }}</el-button>
+      </div>
     </template>
   </el-dialog>
 </template>
@@ -30,6 +36,10 @@ defineOptions({
 
 interface Props extends ModalProps {
   modelValue: boolean
+  confirmButtonText?: string
+  cancelButtonText?: string
+  confirmButtonLoading?: boolean
+  cancelButtonLoading?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
@@ -39,7 +49,11 @@ withDefaults(defineProps<Props>(), {
   closeOnPressEscape: true,
   showClose: true,
   appendToBody: false,
-  destroyOnClose: false
+  destroyOnClose: false,
+  confirmButtonText: '确认',
+  cancelButtonText: '取消',
+  confirmButtonLoading: false,
+  cancelButtonLoading: false
 })
 
 const emit = defineEmits<{
@@ -47,6 +61,8 @@ const emit = defineEmits<{
   close: []
   opened: []
   closed: []
+  confirm: []
+  cancel: []
 }>()
 
 const handleUpdate = (value: boolean) => {
@@ -60,6 +76,15 @@ const handleUpdate = (value: boolean) => {
 
 const handleClose = () => {
   emit('close')
+}
+
+const handleConfirm = () => {
+  emit('confirm')
+}
+
+const handleCancel = () => {
+  emit('cancel')
+  emit('update:modelValue', false)
 }
 </script>
 

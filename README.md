@@ -260,3 +260,5 @@ npm run format
 
 MIT
 
+## TODO
+BasicTable列设置筛选和修改顺序后不会自动更新，需手动

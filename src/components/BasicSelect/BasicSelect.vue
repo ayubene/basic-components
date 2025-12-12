@@ -27,6 +27,7 @@ import { ref, onMounted, watch } from 'vue'
 // 使用相对路径，避免依赖外部项目的 @ 别名配置
 import { request } from '../../utils/request'
 import type { SelectProps } from '../../types'
+import { log } from 'console'
 
 defineOptions({
   name: 'BasicSelect'
@@ -68,6 +69,7 @@ const searchKeyword = ref('')
 
 // 获取字段映射
 const getFieldMap = () => {
+  console.log('getFieldMapgetFieldMap',props);
   return {
     value: props.fieldMap?.value || props.valueKey,
     label: props.fieldMap?.label || props.labelKey,

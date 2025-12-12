@@ -31,6 +31,8 @@
               :placeholder="column.searchPlaceholder || `请选择${column.title}`"
               :options="column.searchSelectProps?.listUrl ? undefined : (searchSelectOptionsMap[column.field] || column.searchOptions)"
               v-bind="column.searchSelectProps"
+              :valueKey="column.searchSelectProps?.valueKey ? column.searchSelectProps?.valueKey : 'value'"
+              :labelKey="column.searchSelectProps?.labelKey ? column.searchSelectProps?.labelKey : 'label'"
               @data-loaded="(payload) => handleSearchSelectLoaded(column.field, column.searchSelectProps, payload)"
               style="width: 100%"
             />
@@ -205,6 +207,33 @@
           <el-table-column label="列名" prop="title" />
           <el-table-column label="字段" prop="field" />
           <el-table-column label="宽度" prop="width" width="100" />
+          <el-table-column label="顺序" prop="order" width="150">
+            <template #default="{ row, $index }">
+              <div style="display: flex; align-items: center; gap: 4px">
+                <span style="flex: 1">{{ row.order ?? '-' }}</span>
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  :disabled="$index === 0"
+                  @click="handleMoveColumn($index, 'up')"
+                  title="上移"
+                >
+                  ↑
+                </el-button>
+                <el-button
+                  type="primary"
+                  link
+                  size="small"
+                  :disabled="$index === customizedColumns.length - 1"
+                  @click="handleMoveColumn($index, 'down')"
+                  title="下移"
+                >
+                  ↓
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column label="可搜索" width="100">
             <template #default="{ row }">
               <el-checkbox v-model="row.searchable" />
@@ -274,6 +303,17 @@
         </el-form-item>
         <el-form-item label="宽度">
           <el-input-number v-model="editingColumn.width" :min="0" placeholder="留空自适应" />
+        </el-form-item>
+        <el-form-item label="顺序">
+          <el-input-number
+            v-model="editingColumn.order"
+            :min="0"
+            placeholder="数字越小越靠前，留空则排在最后"
+            style="width: 100%"
+          />
+          <div style="color: #909399; font-size: 12px; margin-top: 4px">
+            提示：数字越小越靠前，留空则排在最后。如果启用了列拖拽，拖拽后会自动更新顺序值。
+          </div>
         </el-form-item>
         <el-form-item label="对齐方式">
           <el-select v-model="editingColumn.align" placeholder="请选择">
@@ -398,7 +438,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 // 使用相对路径，避免依赖外部项目的 @ 别名配置
@@ -423,8 +463,8 @@ const props = withDefaults(defineProps<Props>(), {
   border: true,
   showPager: true,
   showToolbar: true,
-  showExport: true,
-  showCreate: true,
+  showExport: false,
+  showCreate: false,
   showDelete: false,
   searchFormCols: 3,
   enableColumnCustomize: false,
@@ -484,6 +524,7 @@ const loadSavedColumns = () => {
     if (saved) {
       return JSON.parse(saved)
     }
+    loadData()
   } catch (error) {
     console.error('加载列配置失败:', error)
   }
@@ -535,24 +576,42 @@ const initCustomizedColumns = () => {
         filterable: s.filterable ?? false,
         editRender: s.editRender ?? undefined
       }))
-    return [...merged, ...newColumns]
+    const result = [...merged, ...newColumns]
+    // 为没有 order 的列设置默认 order（根据数组索引）
+    result.forEach((col, index) => {
+      if (col.order === undefined) {
+        col.order = index
+      }
+    })
+    return result
   }
 
   // 默认所有列都显示，确保有默认的 filterable 和 editRender 属性
-  return props.columns.map((col) => ({
+  const result = props.columns.map((col, index) => ({
     ...col,
     visible: true,
     filterable: col.filterable ?? false,
-    editRender: col.editRender ?? undefined
+    editRender: col.editRender ?? undefined,
+    order: col.order ?? index // 如果没有 order，使用索引作为默认值
   }))
+  return result
 }
 
-// 当前显示的列（根据用户配置过滤）
+// 当前显示的列（根据用户配置过滤和排序）
 const displayColumns = computed(() => {
+  let columns: TableColumn[]
   if (!props.enableColumnCustomize) {
-    return props.columns
+    columns = props.columns
+  } else {
+    columns = customizedColumns.value.filter((col) => col.visible !== false)
   }
-  return customizedColumns.value.filter((col) => col.visible !== false)
+  
+  // 根据 order 排序，order 越小越靠前，没有 order 的排在最后
+  return [...columns].sort((a, b) => {
+    const orderA = a.order ?? Number.MAX_SAFE_INTEGER
+    const orderB = b.order ?? Number.MAX_SAFE_INTEGER
+    return orderA - orderB
+  })
 })
 
 // 分页
@@ -902,6 +961,34 @@ const handleAddColumn = () => {
   showColumnEditDialog.value = true
 }
 
+// 移动列顺序（上移/下移）
+const handleMoveColumn = (index: number, direction: 'up' | 'down') => {
+  if (direction === 'up' && index === 0) return
+  if (direction === 'down' && index === customizedColumns.value.length - 1) return
+
+  const targetIndex = direction === 'up' ? index - 1 : index + 1
+  const current = customizedColumns.value[index]
+  const target = customizedColumns.value[targetIndex]
+
+  // 交换位置
+  ;[customizedColumns.value[index], customizedColumns.value[targetIndex]] = [
+    customizedColumns.value[targetIndex],
+    customizedColumns.value[index]
+  ]
+
+  // 更新 order 值：根据新位置自动设置 order
+  // 如果原来有 order，交换 order；如果没有，根据位置设置 order
+  if (current.order !== undefined && target.order !== undefined) {
+    // 交换 order
+    ;[current.order, target.order] = [target.order, current.order]
+  } else {
+    // 根据新位置设置 order（从 0 开始）
+    customizedColumns.value.forEach((col, idx) => {
+      col.order = idx
+    })
+  }
+}
+
 const handleEditColumn = (column: TableColumn, index: number) => {
   editingColumnIndex.value = index
   editingColumn.value = {
@@ -1070,23 +1157,36 @@ const handleSaveColumn = async () => {
     }
 
     if (editingColumnIndex.value === -1) {
-      // 新增
-      customizedColumns.value.push({ ...editingColumn.value })
+      // 新增：如果没有设置 order，使用当前列数组长度作为默认值
+      const newColumn = { ...editingColumn.value }
+      if (newColumn.order === undefined) {
+        newColumn.order = customizedColumns.value.length
+      }
+      customizedColumns.value.push(newColumn)
     } else {
-      // 编辑
+      // 编辑：需要创建新对象以触发响应式更新
       customizedColumns.value[editingColumnIndex.value] = { ...editingColumn.value }
     }
+    
+    // 强制触发响应式更新，确保表格列配置立即生效
+    customizedColumns.value = [...customizedColumns.value]
 
     showColumnEditDialog.value = false
+    // 等待 DOM 更新完成
+    await nextTick()
     ElMessage.success(editingColumnIndex.value === -1 ? '新增成功' : '保存成功')
   } finally {
     savingColumn.value = false
   }
 }
 
-const handleSaveColumns = () => {
+const handleSaveColumns = async () => {
   saveColumns(customizedColumns.value)
+  // 强制触发响应式更新，确保表格列配置立即生效
+  customizedColumns.value = [...customizedColumns.value]
   showColumnCustomizeDialog.value = false
+  // 等待 DOM 更新完成
+  await nextTick()
   ElMessage.success('列配置已保存')
 }
 
@@ -1141,13 +1241,13 @@ watch(
 <style scoped lang="scss">
 .basic-table {
   .search-form {
-    padding: 16px;
+    padding: 0px;
     background: #fff;
     border-radius: 4px;
   }
 
   .toolbar {
-    margin-bottom: 24px;
+    margin-bottom: 12px;
     display: flex;
     gap: 8px;
   }

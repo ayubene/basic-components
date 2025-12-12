@@ -9,6 +9,7 @@ export interface TableColumn {
   sortable?: boolean
   resizable?: boolean // 是否可调整列宽，默认true
   dragable?: boolean // 是否可拖拽排序，默认true
+  order?: number // 列顺序，数字越小越靠前，用于控制列的显示顺序
   filterable?: boolean // 是否可筛选
   filters?: Array<{ label: string; value: any }> // 筛选选项
   editRender?: {
@@ -115,6 +116,10 @@ export interface ModalProps {
   showClose?: boolean
   appendToBody?: boolean
   destroyOnClose?: boolean
+  confirmButtonText?: string
+  cancelButtonText?: string
+  confirmButtonLoading?: boolean
+  cancelButtonLoading?: boolean
   [key: string]: any
 }
 

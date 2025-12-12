@@ -5,4 +5,4 @@ dist
 .idea
 .vscode
 *.local
-
+*.vue.js
